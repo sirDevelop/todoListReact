@@ -1,16 +1,18 @@
-import { faNoteSticky, faRightFromBracket } from '@fortawesome/free-solid-svg-icons'
+import { faNoteSticky, faRightFromBracket, faSpinner, faX } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import React, { useEffect, useState } from 'react'
-import { Button, Col, Container, Row, Form, Collapse, InputGroup } from 'react-bootstrap'
+import { Button, Col, Container, Row, Form, Collapse, InputGroup, Table } from 'react-bootstrap'
 import { useGlobal } from "../Components/ParentComponent"
 import { Link, Navigate, useLocation } from "react-router-dom"
+import { NavBar } from '../Components/NavBar'
 
 const ToDo = () => {
   const [showAddTask, setShowAddTask] = useState(false)
   const [tasks, setTasks] = useState([])
+  const [isSavingTask, setIsSavingTask] = useState(false)
 
   const [formData, setFormData] = useState({})
-  const { authApi, user, setUser, apiInstance } = useGlobal()
+  const { authApi } = useGlobal()
 
   const [appIsLoaded, setAppIsLoaded] = useState(false)
 
@@ -24,7 +26,7 @@ const ToDo = () => {
   useEffect(() => {
     if (!appIsLoaded) {
       authApi.post("/tasks/getTasks").then((response) => {
-        console.log(response.data);
+        setTasks([...tasks, ...response.data.tasks])
         // itemHandler(response.data)
       }).finally(() => {
         setAppIsLoaded(true)
@@ -38,59 +40,35 @@ const ToDo = () => {
 
   const saveTask = () => {
     try {
-      authApi.post("/tasks/addTask").then((response) => {
-        console.log(response.data.taskResult)
-        // setTasks((tasks) => [...tasks, ...response.data.taskResult])
+      setIsSavingTask(true)
+      authApi.post("/tasks/addTask", formData).then((response) => {
+        setFormData({ description: "" })
+        setTasks((tasks) => [...tasks, response.data.taskResult])
+      }).finally(() => {
+        setShowAddTask((showAddTask) => !showAddTask)
+        setIsSavingTask(false)
       })
     } catch (err) {
       console.log(err)
     }
   }
 
+  const deleteTask = () => {
+    try {
+      authApi.post("/tasks/deleteTask", formData).then((response) => {
+        console.log(response)
+      })
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+
   return (
     <Container className='border shadow p-3 rounded' fluid>
       <Row>
         <Col className='text-center'>
-          <Button className='mx-auto bg-gradient' onClick={() => { setShowAddTask(!showAddTask) }}>
-            Add Task
-          </Button>
-
-
-          {user ? (
-            <Button
-              onClick={() => {
-                apiInstance
-                  .get("auth/logout")
-                  .then((response) => {
-                    setUser()
-                  })
-              }}
-            >
-              <FontAwesomeIcon
-                icon={faRightFromBracket}
-                className="me-2"
-              />
-              Sign out
-            </Button>
-          ) : (
-            <Button className='mx-auto bg-gradient'
-              as={Link}
-              to="http://localhost:9000/auth/google/callback"
-              variant="outline-info"
-
-              // onClick={() => {
-              //   apiInstance
-              //     .get("auth/google/callback")
-              //     .then((response) => {
-              //       console.log(response);
-              //     })
-              // }}
-            >
-              Login With Google
-            </Button>
-
-          )}
-
+          <NavBar showAddTask={showAddTask} setShowAddTask={setShowAddTask} />
           <Collapse in={showAddTask}>
             <Form className='mt-3'>
               <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
@@ -101,22 +79,58 @@ const ToDo = () => {
                   </InputGroup.Text>
                   <Form.Control name="description" as="textarea" value={formData.description} onChange={handleFormData} rows={3} placeholder="Add task description" />
                 </InputGroup>
-                <Button variant='success' className='mx-auto bg-gradient' onClick={() => {
-                  setShowAddTask(!showAddTask)
-                  // clear input
-                  // save the task
+                <Button variant='success' className='mx-auto bg-gradient' disabled={isSavingTask} onClick={() => {
                   saveTask()
                 }}>
-                  Save
+                  {!isSavingTask ? "Save" : <FontAwesomeIcon icon={faSpinner} spin />}
                 </Button>
+
               </Form.Group>
+
 
             </Form>
           </Collapse>
+
         </Col>
       </Row>
-      <Row>Tasks</Row>
-      <Button></Button>
+
+      <Table>
+        <thead>
+          <tr className='border-bottom'>
+            <td className='border-0'>
+              Date
+            </td>
+            <td className='border-0'>
+              Status
+            </td>
+            <td className='border-0'>
+              Description
+            </td>
+          </tr>
+        </thead>
+      {
+        tasks.map(task => {
+          return <>
+            <tr className='tasks'>
+              <td className="border-bottom">
+                {`${new Date(task.date).toISOString().substr(0, 10)} `}
+              </td>
+              <td className="border-bottom">
+                {`${task.status}`}
+              </td>
+              <td className="border-bottom">
+                {`${task.description.substr(0,100)}`}
+                
+              </td>
+              <td className="border-bottom text-end">
+                <Button className='ms-auto text-danger border-0' variant='danger'><FontAwesomeIcon icon={faX} /></Button>
+              </td>
+            </tr>
+          </>
+
+        })
+      }
+      </Table>
     </Container>
   )
 }

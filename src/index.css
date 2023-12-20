@@ -13,3 +13,11 @@ code {
     monospace;
 }
 
+.tasks:hover {
+  border-color: blue !important;
+  background-color: antiquewhite;
+}
+
+.td {
+  max-width: 75ch;
+}

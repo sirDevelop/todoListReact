@@ -10,9 +10,10 @@ export function useGlobal() {
 }
 
 const ParentComponent = ({ children }) => {
-    const apiInstance = axios.create({ baseURL: process.env.REACT_APP_ROOT_SERVER_URL })
+    const apiInstance = axios.create({ baseURL: process.env.REACT_APP_ROOT_SERVER_URL, withCredentials: true, })
 	const pathName = useLocation().pathname
 	const navigate = useNavigate()
+	const [isLoginLoading, setIsLoginLoading] = useState(true)
 	const authApi = axios.create({
 		baseURL: process.env.REACT_APP_SERVER_URL,
 		withCredentials: true,
@@ -21,7 +22,7 @@ const ParentComponent = ({ children }) => {
 
 	const getUser = () => {
 		try {
-			authApi
+			apiInstance
 				.get("/auth/login/success")
 				.then((response) => {
 					setUser(response.data.user._json)
@@ -29,7 +30,7 @@ const ParentComponent = ({ children }) => {
 				.catch((e) => {
 					if(pathName.indexOf("") !== -1) navigate("/")
 					setUser()
-				})
+				}).finally(() => setIsLoginLoading(false))
 		} catch (err) {
 			console.log(err)
 		}
@@ -40,7 +41,7 @@ const ParentComponent = ({ children }) => {
 	}, [])
 
 	return (
-		<ParentContent.Provider value={{ user, setUser, authApi, apiInstance }}>
+		<ParentContent.Provider value={{ user, setUser, authApi, apiInstance, isLoginLoading }}>
 			{children}
 		</ParentContent.Provider>
 	)

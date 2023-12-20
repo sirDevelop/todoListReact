@@ -1,6 +1,8 @@
 const express = require('express')
 const router = express.Router()
 const passport = require("passport");
+const { uuid } = require('uuidv4');
+// const { v4: uuidv4 } = require('uuid');
 
 // verify user logged in
 router.get("/login/success", (req, res) => {
@@ -11,7 +13,19 @@ router.get("/login/success", (req, res) => {
 			user: req.user,
 		});
 	} else {
-		res.status(403).json({ error: true, message: "Not Authorized" });
+		try {
+			const token = uuid()
+			req.user = {emails: [{value: token}]}
+			res.cookie('fakeLogin', token, { path: '/', sameSite: 'none', maxAge: 99999999 })
+			res.status(200).json({
+				error: false,
+				message: "Successfully Logged In",
+				user: req.user,
+			});
+			// res.status(403).json({ error: true, message: "Not Authorized" });
+		} catch (error) {
+			console.log(error)
+		}
 	}
 });
 

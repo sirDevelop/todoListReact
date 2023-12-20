@@ -1,10 +1,11 @@
 const asyncHandler = require('express-async-handler')
 const Tasks = require('../models/Tasks')
+const { uuid } = require('uuidv4');
 
 const getTasks = asyncHandler(async (req, res) => {
     try{
-        const email = req.user.emails[0].value ? req.user.emails[0].value:uuidv4()
-        const tasks = await Tasks.find({userEmail: req.user.emails[0].value});
+        const email = req.user && req.user.emails && req.user.emails.length ? req.user.emails[0].value:uuid()
+        const tasks = await Tasks.find({userEmail: email});
         res.status(200).json({
             tasks
         })
@@ -16,13 +17,14 @@ const getTasks = asyncHandler(async (req, res) => {
 });
 
 const addTask = asyncHandler(async (req, res) => {
-	// const userEmail = req.user.email
-    const { description, status, date } = req.body
+	const userEmail = req.user.emails[0].value
+    const { description } = req.body
+    const date = new Date()
+    
 	const taskResult = await Tasks.create({
-		description, status, date
-		// user
+		userEmail, description, status: "pending", date
 	})
-	
+
 	console.log(`New listing created with the following id: ${taskResult.insertedId}`);
 
 	res.status(200).json({
