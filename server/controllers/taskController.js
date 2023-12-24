@@ -22,10 +22,10 @@ const addTask = asyncHandler(async (req, res) => {
     const date = new Date()
     
 	const taskResult = await Tasks.create({
-		userEmail, description, status: "pending", date
+		userEmail, description, status: "Pending", date
 	})
 
-	console.log(`New listing created with the following id: ${taskResult.insertedId}`);
+	console.log(`New listing created with the following id: ${taskResult._id}`);
 
 	res.status(200).json({
 		taskResult
@@ -34,12 +34,49 @@ const addTask = asyncHandler(async (req, res) => {
 
 const editTask = asyncHandler(async (req, res) => {
     // allow it to change the status/description/date
+    const userEmail = req.user.emails[0].value
+    const { _id, date, description, status } = req.body
+    console.log( _id);
+    console.log(date);
+    console.log(description);
+    console.log(status);
+
+	const taskResult = await Tasks.updateOne(
+		{_id, userEmail},
+        { date, description, status}
+        )
+
+	console.log(`Number of documents modified: ${taskResult.modifiedCount}`);
+
+	res.status(200).json({
+		taskResult
+	})
 });
 
 const deleteTask = asyncHandler(async (req, res) => {
+    const userEmail = req.user.emails[0].value
+    const { id } = req.body
+    
+	const taskResult = await Tasks.deleteOne({
+		userEmail, _id: id
+	})
+
+	console.log(`Number of documents removed: ${taskResult.deletedCount}`);
+
+	res.status(200).json({
+		taskResult
+	})
 });
 
 const deleteAllTasks = asyncHandler(async (req, res) => {
+
+	const taskResult = await Tasks.deleteMany({})
+
+	console.log(`All tasks deleted with the following result: ${taskResult}`);
+
+	res.status(200).json({
+		taskResult
+	})
 });
 
 module.exports = { getTasks, addTask, editTask, deleteTask, deleteAllTasks };

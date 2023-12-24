@@ -1,10 +1,11 @@
-import { faNoteSticky, faRightFromBracket, faSpinner, faX } from '@fortawesome/free-solid-svg-icons'
+import { faCheck, faNoteSticky, faPencil, faRightFromBracket, faSpinner, faX } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import React, { useEffect, useState } from 'react'
 import { Button, Col, Container, Row, Form, Collapse, InputGroup, Table } from 'react-bootstrap'
 import { useGlobal } from "../Components/ParentComponent"
 import { Link, Navigate, useLocation } from "react-router-dom"
 import { NavBar } from '../Components/NavBar'
+import Swal from 'sweetalert2'
 
 const ToDo = () => {
   const [showAddTask, setShowAddTask] = useState(false)
@@ -53,14 +54,63 @@ const ToDo = () => {
     }
   }
 
-  const deleteTask = () => {
+  const editTask = (id) => {
     try {
-      authApi.post("/tasks/deleteTask", formData).then((response) => {
-        console.log(response)
-      })
+      setTasks((tasks) => [...tasks.map(task => {
+        return task._id === id ? { ...task, isSaving: true } : task
+      })])
+      // they are already editing and they clicked the check
+      const newTaskData = tasks.filter(task => task._id === id)[0]
+
+      if (newTaskData.isEditing != null && newTaskData.isEditing) {
+        authApi.post("/tasks/editTask", { ...newTaskData }).then((response) => {
+          console.log("response", response);
+          // alert(success)
+        }).finally(() => {
+          setTasks((tasks) => [...tasks.map(task => {
+            return task._id === id ? { ...task, isEditing: false, isSaving: false } : task
+          })])
+        })
+      }
+
+
     } catch (err) {
       console.log(err)
     }
+  }
+
+  const deleteTask = (id) => {
+    Swal.fire({
+      title: "Confirm Task Deletion",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        try {
+          setTasks((tasks) => [...tasks.map(task => {
+            return task._id === id ? { ...task, isDeleting: true } : task
+          })])
+          authApi.post("/tasks/deleteTask", { id }).then((response) => {
+            setTasks((tasks) => [...tasks.filter(task => task._id !== id)])
+          }).finally(() => {
+            setTasks((tasks) => [...tasks.map(task => {
+              return task._id === id ? { ...task, isDeleting: false } : task
+            })])
+            Swal.fire({
+              title: "Deleted!",
+              text: "The task has been deleted.",
+              icon: "success"
+            });
+          })
+        } catch (err) {
+          console.log(err)
+        }
+      }
+    });
   }
 
 
@@ -68,7 +118,7 @@ const ToDo = () => {
     <Container className='border shadow p-3 rounded' fluid>
       <Row>
         <Col className='text-center'>
-          <NavBar showAddTask={showAddTask} setShowAddTask={setShowAddTask} />
+          <NavBar showAddTask={showAddTask} setShowAddTask={setShowAddTask} setTasks={setTasks} />
           <Collapse in={showAddTask}>
             <Form className='mt-3'>
               <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
@@ -94,7 +144,7 @@ const ToDo = () => {
         </Col>
       </Row>
 
-      <Table>
+      <Table className='mt-3'>
         <thead>
           <tr className='border-bottom'>
             <td className='border-0'>
@@ -106,30 +156,66 @@ const ToDo = () => {
             <td className='border-0'>
               Description
             </td>
+            <td className='border-0 text-end'>
+              Actions
+            </td>
           </tr>
         </thead>
-      {
-        tasks.map(task => {
-          return <>
-            <tr className='tasks'>
-              <td className="border-bottom">
-                {`${new Date(task.date).toISOString().substr(0, 10)} `}
-              </td>
-              <td className="border-bottom">
-                {`${task.status}`}
-              </td>
-              <td className="border-bottom">
-                {`${task.description.substr(0,100)}`}
-                
-              </td>
-              <td className="border-bottom text-end">
-                <Button className='ms-auto text-danger border-0' variant='danger'><FontAwesomeIcon icon={faX} /></Button>
-              </td>
-            </tr>
-          </>
+        
+        {
+          tasks.map(task => {
+            return <>
+              <tr className={`tasks ${task.isEditing ? "edit" : ""}`}>
+                <td className="border-bottom">
+                  {task.isEditing ? <Form.Control
+                    type="date"
+                    defaultValue={new Date(task.date).toISOString().substr(0, 10)}
+                    onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
+                      return oldTask._id === task._id ? { ...oldTask, date: e.target.value } : oldTask
+                    })])}
+                  /> : new Date(task.date).toISOString().substr(0, 10)}
+                </td>
+                <td className="border-bottom">
+                  {task.isEditing ? <><Form.Check
+                    onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
+                      return oldTask._id === task._id ? { ...oldTask, status: e.target.checked ? "Completed" : "Pending" } : oldTask
+                    })])}
+                    className='ms-5'
+                    type={"checkbox"}
+                    label={task.status}
+                  />
+                  </>
+                    : task.status}
 
-        })
-      }
+                </td>
+                <td className="border-bottom">
+                  {task.isEditing ? <Form.Control
+                    as="textarea"
+                    placeholder={task.description.substr(0, 100)}
+                    defaultValue={task.description.substr(0, 100)}
+                    onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
+                      return oldTask._id===task._id ? {...oldTask, description: e.target.value}:oldTask
+                    })])}
+                  /> : `${task.description.substr(0, 100)}`}
+                </td>
+                <td className="border-bottom text-end">
+                  {/* disabled={task.isEditing} */}
+                  <Button disabled={task.isSaving} onClick={!task.isEditing ? () => setTasks((tasks) => [...tasks.map(oldTask => {
+                    return oldTask._id === task._id ? { ...oldTask, isEditing: true } : oldTask
+                  })]) : () => editTask(task._id) } className='edit-task ms-auto border-0 bg-transparent text-success'>
+                    {task.isEditing ? task.isSaving ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faCheck} /> : <FontAwesomeIcon icon={faPencil} />}</Button>
+                  <Button onClick={() => deleteTask(task._id)} disabled={task.isDeleting} className='delete-task ms-auto border-0 bg-transparent text-danger'>
+                    {task.isDeleting ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faX} />}
+                  </Button>
+                </td>
+              </tr>
+            </>
+
+          })
+        }
+        {!tasks.length ? <tr>
+          <td colSpan={4} className='text-center py-3 bg-light '>No Tasks</td>
+        </tr>:<></>}
       </Table>
     </Container>
   )
