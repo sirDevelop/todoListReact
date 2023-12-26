@@ -52,6 +52,7 @@ export const NavBar = ({ showAddTask, setShowAddTask, setTasks }) => {
             apiInstance
               .get("auth/logout")
               .then((response) => {
+                setTasks([])
                 setUser()
               })
           }}

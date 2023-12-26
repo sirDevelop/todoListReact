@@ -1,4 +1,4 @@
-import { faCheck, faNoteSticky, faPencil, faRightFromBracket, faSpinner, faX } from '@fortawesome/free-solid-svg-icons'
+import { faCalendarAlt, faCheck, faNoteSticky, faPencil, faRightFromBracket, faSpinner, faX } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import React, { useEffect, useState } from 'react'
 import { Button, Col, Container, Row, Form, Collapse, InputGroup, Table } from 'react-bootstrap'
@@ -12,7 +12,7 @@ const ToDo = () => {
   const [tasks, setTasks] = useState([])
   const [isSavingTask, setIsSavingTask] = useState(false)
 
-  const [formData, setFormData] = useState({})
+  const [formData, setFormData] = useState({deadline: new Date().toISOString().substr(0, 10)})
   const { authApi } = useGlobal()
 
   const [appIsLoaded, setAppIsLoaded] = useState(false)
@@ -43,7 +43,7 @@ const ToDo = () => {
     try {
       setIsSavingTask(true)
       authApi.post("/tasks/addTask", formData).then((response) => {
-        setFormData({ description: "" })
+        setFormData({ description: "", date: new Date().toISOString().substr(0, 10) })
         setTasks((tasks) => [...tasks, response.data.taskResult])
       }).finally(() => {
         setShowAddTask((showAddTask) => !showAddTask)
@@ -120,18 +120,33 @@ const ToDo = () => {
         <Col className='text-center'>
           <NavBar showAddTask={showAddTask} setShowAddTask={setShowAddTask} setTasks={setTasks} />
           <Collapse in={showAddTask}>
-            <Form className='mt-3'>
+            <Form onSubmit={(e) => {
+              e.preventDefault()
+              saveTask()
+            }} className='mt-3'>
               <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
+                <InputGroup className="mb-3">
+                  {/* <span class="fa-li"><i class="fas fa-spinner fa-pulse"></i></span> */}
+                  <InputGroup.Text>
+                    <FontAwesomeIcon icon={faCalendarAlt} />
+                  </InputGroup.Text>
+                  <Form.Control
+                    required={true}
+                    type="date"
+                    defaultValue={new Date().toISOString().substr(0, 10)}
+                    name="deadline"
+                    value={formData.deadline}
+                    onChange={handleFormData}
+                  />
+                </InputGroup>
                 <InputGroup className="mb-3">
                   {/* <span class="fa-li"><i class="fas fa-spinner fa-pulse"></i></span> */}
                   <InputGroup.Text>
                     <FontAwesomeIcon icon={faNoteSticky} />
                   </InputGroup.Text>
-                  <Form.Control name="description" as="textarea" value={formData.description} onChange={handleFormData} rows={3} placeholder="Add task description" />
+                  <Form.Control className='border-start-0' required={true} name="description" as="textarea" value={formData.description} onChange={handleFormData} rows={3} placeholder="Add task description" />
                 </InputGroup>
-                <Button variant='success' className='mx-auto bg-gradient' disabled={isSavingTask} onClick={() => {
-                  saveTask()
-                }}>
+                <Button type="submit" variant='success' className='mx-auto bg-gradient' disabled={isSavingTask}>
                   {!isSavingTask ? "Save" : <FontAwesomeIcon icon={faSpinner} spin />}
                 </Button>
 
@@ -148,7 +163,7 @@ const ToDo = () => {
         <thead>
           <tr className='border-bottom'>
             <td className='border-0'>
-              Date
+              Deadline
             </td>
             <td className='border-0'>
               Status
@@ -161,11 +176,10 @@ const ToDo = () => {
             </td>
           </tr>
         </thead>
-        
         {
-          tasks.map(task => {
+          tasks.sort((a,b) => new Date(b.date) - new Date(a.date)).map((task,taskIndex) => {
             return <>
-              <tr className={`tasks ${task.isEditing ? "edit" : ""}`}>
+              <tr key={taskIndex} className={`tasks ${task.isEditing ? "edit" : ""} ${new Date(task.date) < new Date(new Date().toISOString().substr(0,10)) ? "bg-warning text-white":""}`}>
                 <td className="border-bottom">
                   {task.isEditing ? <Form.Control
                     type="date"
@@ -183,6 +197,7 @@ const ToDo = () => {
                     className='ms-5'
                     type={"checkbox"}
                     label={task.status}
+                    checked={task.status === "Completed"}
                   />
                   </>
                     : task.status}

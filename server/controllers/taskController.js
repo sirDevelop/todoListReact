@@ -4,8 +4,8 @@ const { uuid } = require('uuidv4');
 
 const getTasks = asyncHandler(async (req, res) => {
     try{
-        const email = req.user && req.user.emails && req.user.emails.length ? req.user.emails[0].value:uuid()
-        const tasks = await Tasks.find({userEmail: email});
+		const userEmail = req.user.emails[0].value
+        const tasks = await Tasks.find({userEmail});
         res.status(200).json({
             tasks
         })
@@ -18,8 +18,8 @@ const getTasks = asyncHandler(async (req, res) => {
 
 const addTask = asyncHandler(async (req, res) => {
 	const userEmail = req.user.emails[0].value
-    const { description } = req.body
-    const date = new Date()
+    const { deadline, description } = req.body
+	const date = deadline
     
 	const taskResult = await Tasks.create({
 		userEmail, description, status: "Pending", date
@@ -35,6 +35,10 @@ const addTask = asyncHandler(async (req, res) => {
 const editTask = asyncHandler(async (req, res) => {
     // allow it to change the status/description/date
     const userEmail = req.user.emails[0].value
+	if(!userEmail && req.cookies.guestUserId) {
+		userEmail = req.cookies.guestUserId;
+	}
+
     const { _id, date, description, status } = req.body
     console.log( _id);
     console.log(date);
@@ -55,6 +59,10 @@ const editTask = asyncHandler(async (req, res) => {
 
 const deleteTask = asyncHandler(async (req, res) => {
     const userEmail = req.user.emails[0].value
+	if(!userEmail && req.cookies.guestUserId) {
+		userEmail = req.cookies.guestUserId;
+	}
+
     const { id } = req.body
     
 	const taskResult = await Tasks.deleteOne({
@@ -69,8 +77,12 @@ const deleteTask = asyncHandler(async (req, res) => {
 });
 
 const deleteAllTasks = asyncHandler(async (req, res) => {
+	const userEmail = req.user.emails[0].value
+	if(!userEmail && req.cookies.guestUserId) {
+		userEmail = req.cookies.guestUserId;
+	}
 
-	const taskResult = await Tasks.deleteMany({})
+	const taskResult = await Tasks.deleteMany({userEmail})
 
 	console.log(`All tasks deleted with the following result: ${taskResult}`);
 
