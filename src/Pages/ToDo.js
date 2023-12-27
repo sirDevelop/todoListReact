@@ -1,4 +1,4 @@
-import { faCalendarAlt, faCheck, faNoteSticky, faPencil, faRightFromBracket, faSpinner, faX } from '@fortawesome/free-solid-svg-icons'
+import { faCalendarAlt, faCheck, faNoteSticky, faPencil, faRightFromBracket, faSpinner, faX, faThumbsUp, faBan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import React, { useEffect, useState } from 'react'
 import { Button, Col, Container, Row, Form, Collapse, InputGroup, Table } from 'react-bootstrap'
@@ -12,7 +12,7 @@ const ToDo = () => {
   const [tasks, setTasks] = useState([])
   const [isSavingTask, setIsSavingTask] = useState(false)
 
-  const [formData, setFormData] = useState({deadline: new Date().toISOString().substr(0, 10)})
+  const [formData, setFormData] = useState({ date: new Date().toISOString().substr(0, 10) })
   const { authApi } = useGlobal()
 
   const [appIsLoaded, setAppIsLoaded] = useState(false)
@@ -43,7 +43,7 @@ const ToDo = () => {
     try {
       setIsSavingTask(true)
       authApi.post("/tasks/addTask", formData).then((response) => {
-        setFormData({ description: "", date: new Date().toISOString().substr(0, 10) })
+        setFormData((formData) => { return { ...formData, description: "" } })
         setTasks((tasks) => [...tasks, response.data.taskResult])
       }).finally(() => {
         setShowAddTask((showAddTask) => !showAddTask)
@@ -54,24 +54,27 @@ const ToDo = () => {
     }
   }
 
-  const editTask = (id) => {
+  // useEffect(() => {
+  //   console.log(tasks.filter(task => task.isEditing))
+  // }, [tasks])
+
+
+  const editTask = (id, changeStatus) => {
     try {
       setTasks((tasks) => [...tasks.map(task => {
-        return task._id === id ? { ...task, isSaving: true } : task
+        return task._id === id ? { ...task, isSaving: true, status: changeStatus ? task.status === "Completed" ? "Pending" : "Completed" : task.status } : task
       })])
-      // they are already editing and they clicked the check
+
       const newTaskData = tasks.filter(task => task._id === id)[0]
 
-      if (newTaskData.isEditing != null && newTaskData.isEditing) {
-        authApi.post("/tasks/editTask", { ...newTaskData }).then((response) => {
-          console.log("response", response);
-          // alert(success)
-        }).finally(() => {
-          setTasks((tasks) => [...tasks.map(task => {
-            return task._id === id ? { ...task, isEditing: false, isSaving: false } : task
-          })])
-        })
-      }
+      authApi.post("/tasks/editTask", { ...newTaskData, status: changeStatus ? newTaskData.status === "Completed" ? "Pending" : "Completed" : newTaskData.status }).then((response) => {
+        // console.log("response", response);
+        // alert(success)
+      }).finally(() => {
+        setTasks((tasks) => [...tasks.map(task => {
+          return task._id === id ? { ...task, isEditing: false, isSaving: false } : task
+        })])
+      })
 
 
     } catch (err) {
@@ -134,8 +137,8 @@ const ToDo = () => {
                     required={true}
                     type="date"
                     defaultValue={new Date().toISOString().substr(0, 10)}
-                    name="deadline"
-                    value={formData.deadline}
+                    name="date"
+                    value={formData.date}
                     onChange={handleFormData}
                   />
                 </InputGroup>
@@ -149,9 +152,7 @@ const ToDo = () => {
                 <Button type="submit" variant='success' className='mx-auto bg-gradient' disabled={isSavingTask}>
                   {!isSavingTask ? "Save" : <FontAwesomeIcon icon={faSpinner} spin />}
                 </Button>
-
               </Form.Group>
-
 
             </Form>
           </Collapse>
@@ -177,20 +178,27 @@ const ToDo = () => {
           </tr>
         </thead>
         {
-          tasks.sort((a,b) => new Date(b.date) - new Date(a.date)).map((task,taskIndex) => {
-            return <>
-              <tr key={taskIndex} className={`tasks ${task.isEditing ? "edit" : ""} ${new Date(task.date) < new Date(new Date().toISOString().substr(0,10)) ? "bg-warning text-white":""}`}>
-                <td className="border-bottom">
-                  {task.isEditing ? <Form.Control
+          tasks.sort((a, b) => ((Number(a.status === "Completed") - Number(b.status === "Completed")) || (new Date(b.date) - new Date(a.date)))).map((task, taskIndex) => {
+            return (
+              <tr key={taskIndex} className={`tasks ${task.isEditing ? "edit" : ""} ${new Date(task.date) < new Date(new Date().toISOString().substr(0, 10)) && task.status !== "Completed" ? "bg-warning text-white" : task.status === "Completed" ? "bg-success text-white" : ""}`}>
+                <td className="border-bottom p-3">
+                  {task.status === "Completed" && !task.isEditing ? <del className={`${new Date(task.date) < new Date(new Date().toISOString().substr(0, 10)) && task.status !== "Completed" ? "bg-warning text-white" : task.status === "Completed" ? "bg-success text-white" : ""}`}>{task.isEditing ? <Form.Control
                     type="date"
                     defaultValue={new Date(task.date).toISOString().substr(0, 10)}
                     onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
                       return oldTask._id === task._id ? { ...oldTask, date: e.target.value } : oldTask
                     })])}
+                  /> : new Date(task.date).toISOString().substr(0, 10)}</del> : task.isEditing ? <Form.Control
+                    type="date"
+                    defaultValue={new Date(task.date).toISOString().substr(0, 10)}
+                    onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
+                      return oldTask._id === task._id ? { ...oldTask, date: e.target.value } : oldTask
+                    })])}
+                    className={`${new Date(task.date) < new Date(new Date().toISOString().substr(0, 10)) && task.status !== "Completed" ? "bg-warning text-white" : task.status === "Completed" ? "bg-success text-white" : ""}`}
                   /> : new Date(task.date).toISOString().substr(0, 10)}
                 </td>
-                <td className="border-bottom">
-                  {task.isEditing ? <><Form.Check
+                <td className="border-bottom p-3">
+                  {task.status === "Completed" && !task.isEditing ? <del className={`${new Date(task.date) < new Date(new Date().toISOString().substr(0, 10)) && task.status !== "Completed" ? "bg-warning text-white" : task.status === "Completed" ? "bg-success text-white" : ""}`}>{task.isEditing ? <><Form.Check
                     onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
                       return oldTask._id === task._id ? { ...oldTask, status: e.target.checked ? "Completed" : "Pending" } : oldTask
                     })])}
@@ -200,37 +208,59 @@ const ToDo = () => {
                     checked={task.status === "Completed"}
                   />
                   </>
+                    : task.status}</del> : task.isEditing ? <><Form.Check
+                      onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
+                        return oldTask._id === task._id ? { ...oldTask, status: e.target.checked ? "Completed" : "Pending" } : oldTask
+                      })])}
+                      type={"checkbox"}
+                      label={task.status}
+                      className={`ms-5 ${new Date(task.date) < new Date(new Date().toISOString().substr(0, 10)) && task.status !== "Completed" ? "bg-warning text-white" : task.status === "Completed" ? "bg-success text-white" : ""}`}
+                      checked={task.status === "Completed"}
+                    />
+                    </>
                     : task.status}
 
                 </td>
-                <td className="border-bottom">
-                  {task.isEditing ? <Form.Control
+                <td className="border-bottom p-3">
+                  {task.status === "Completed" && !task.isEditing ? <del className={`${new Date(task.date) < new Date(new Date().toISOString().substr(0, 10)) && task.status !== "Completed" ? "bg-warning text-white" : task.status === "Completed" ? "bg-success text-white" : ""}`}>{task.isEditing ? <Form.Control
                     as="textarea"
                     placeholder={task.description.substr(0, 100)}
                     defaultValue={task.description.substr(0, 100)}
                     onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
-                      return oldTask._id===task._id ? {...oldTask, description: e.target.value}:oldTask
+                      return oldTask._id === task._id ? { ...oldTask, description: e.target.value } : oldTask
+                    })])}
+                  /> : `${task.description.substr(0, 100)}`}</del> : task.isEditing ? <Form.Control
+                    as="textarea"
+                    placeholder={task.description.substr(0, 100)}
+                    className={`ms-5 ${new Date(task.date) < new Date(new Date().toISOString().substr(0, 10)) && task.status !== "Completed" ? "bg-warning text-white" : task.status === "Completed" ? "bg-success text-white" : ""}`}
+                    defaultValue={task.description.substr(0, 100)}
+                    onChange={(e) => setTasks((tasks) => [...tasks.map(oldTask => {
+                      return oldTask._id === task._id ? { ...oldTask, description: e.target.value } : oldTask
                     })])}
                   /> : `${task.description.substr(0, 100)}`}
                 </td>
                 <td className="border-bottom text-end">
-                  {/* disabled={task.isEditing} */}
+                  <Button className={`edit-task ms-auto border-0 bg-transparent text-info ${task.status === "Completed" ? "text-white" : ""}`} onClick={() => {
+                    editTask(task._id, true) // true means toggleStatus option in the editTask function is enabled
+                  }}>
+                    {task.status === "Completed" ? <FontAwesomeIcon icon={faBan} /> : <FontAwesomeIcon icon={faThumbsUp} />}
+
+                  </Button>
                   <Button disabled={task.isSaving} onClick={!task.isEditing ? () => setTasks((tasks) => [...tasks.map(oldTask => {
                     return oldTask._id === task._id ? { ...oldTask, isEditing: true } : oldTask
-                  })]) : () => editTask(task._id) } className='edit-task ms-auto border-0 bg-transparent text-success'>
+                  })]) : () => editTask(task._id, false)} className={`edit-task ms-auto border-0 bg-transparent text-primary ${task.status === "Completed" ? "text-white" : ""}`}>
                     {task.isEditing ? task.isSaving ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faCheck} /> : <FontAwesomeIcon icon={faPencil} />}</Button>
-                  <Button onClick={() => deleteTask(task._id)} disabled={task.isDeleting} className='delete-task ms-auto border-0 bg-transparent text-danger'>
+                  <Button onClick={() => deleteTask(task._id)} disabled={task.isDeleting} className={`edit-task ms-auto border-0 bg-transparent text-danger ${task.status === "Completed" ? "text-white" : ""}`}>
                     {task.isDeleting ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faX} />}
                   </Button>
                 </td>
               </tr>
-            </>
-
+            )
           })
         }
         {!tasks.length ? <tr>
           <td colSpan={4} className='text-center py-3 bg-light '>No Tasks</td>
-        </tr>:<></>}
+        </tr> : <></>}
       </Table>
     </Container>
   )

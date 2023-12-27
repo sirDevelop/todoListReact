@@ -18,8 +18,7 @@ const getTasks = asyncHandler(async (req, res) => {
 
 const addTask = asyncHandler(async (req, res) => {
 	const userEmail = req.user.emails[0].value
-    const { deadline, description } = req.body
-	const date = deadline
+    const { date, description } = req.body
     
 	const taskResult = await Tasks.create({
 		userEmail, description, status: "Pending", date
