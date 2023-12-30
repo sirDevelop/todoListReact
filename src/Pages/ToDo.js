@@ -17,18 +17,10 @@ const ToDo = () => {
 
   const [appIsLoaded, setAppIsLoaded] = useState(false)
 
-  const itemHandler = (data) => {
-    // setIsMoreAvailable(data.moreItemsAvailable)
-    // setMaxPriceRange(data.maxPriceValue)
-    setTasks((tasks) => { return [...tasks, ...data] })
-    // setPage(page + 1)
-  }
-
   useEffect(() => {
     if (!appIsLoaded) {
       authApi.post("/tasks/getTasks").then((response) => {
         setTasks([...tasks, ...response.data.tasks])
-        // itemHandler(response.data)
       }).finally(() => {
         setAppIsLoaded(true)
       })
@@ -53,11 +45,6 @@ const ToDo = () => {
       console.log(err)
     }
   }
-
-  // useEffect(() => {
-  //   console.log(tasks.filter(task => task.isEditing))
-  // }, [tasks])
-
 
   const editTask = (id, changeStatus) => {
     try {

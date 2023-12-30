@@ -39,10 +39,6 @@ const editTask = asyncHandler(async (req, res) => {
 	}
 
     const { _id, date, description, status } = req.body
-    console.log( _id);
-    console.log(date);
-    console.log(description);
-    console.log(status);
 
 	const taskResult = await Tasks.updateOne(
 		{_id, userEmail},
@@ -63,7 +59,6 @@ const deleteTask = asyncHandler(async (req, res) => {
 	}
 
     const { id } = req.body
-    
 	const taskResult = await Tasks.deleteOne({
 		userEmail, _id: id
 	})
